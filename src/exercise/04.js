@@ -3,13 +3,37 @@
 
 import * as React from 'react'
 
+function useLocalStorageState(key, defaultValue = Array(9).fill(null)) {
+  const [state, setState] = React.useState(() => {
+    const localStorageValue = window.localStorage.getItem(key);
+    if (localStorageValue) {
+      try {
+        return JSON.parse(localStorageValue);
+      } catch (error) {
+        window.localStorage.removeItem(key);
+      }
+    }
+    return typeof defaultValue === 'function' ? defaultValue() : defaultValue;
+  });
+
+  React.useEffect(() => {
+    window.localStorage.setItem(key, JSON.stringify(state))
+  }, [key, state]);
+
+  return [state, setState];
+}
+
 function Board() {
   // 🐨 squares is the state for this component. Add useState for squares
-  const [squares, setSquares] = React.useState(Array(9).fill(null));
-  const [statusMessage, setStatusMessage] = React.useState(calculateStatus(
-    calculateWinner(squares),
-    squares,
-    calculateNextValue(squares)));
+  const [squares, setSquares] = useLocalStorageState('squares');
+  const [statusMessage, setStatusMessage] = useLocalStorageState(
+    'message',
+    calculateStatus(
+      calculateWinner(squares),
+      squares,
+      calculateNextValue(squares)
+    )
+  );
 
   // 🐨 We'll need the following bits of derived state:
   // - nextValue ('X' or 'O')
