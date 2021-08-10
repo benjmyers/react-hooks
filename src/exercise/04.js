@@ -6,22 +6,16 @@ import { useLocalStorageState } from '../utils';
 
 function Board() {
   // 🐨 squares is the state for this component. Add useState for squares
-  const [squares, setSquares] = useLocalStorageState('squares');
+  const [moveCount, setMoveCount] = useLocalStorageState('moveCount', 0);
+  const [squares, setSquares] = useLocalStorageState('squares', [Array(9).fill(null)]);
   const [statusMessage, setStatusMessage] = useLocalStorageState(
     'message',
     calculateStatus(
-      calculateWinner(squares),
-      squares,
-      calculateNextValue(squares)
+      calculateWinner(squares[moveCount]),
+      squares[moveCount],
+      calculateNextValue(squares[moveCount])
     )
   );
-
-  // 🐨 We'll need the following bits of derived state:
-  // - nextValue ('X' or 'O')
-  // - winner ('X', 'O', or null)
-  // - status (`Winner: ${winner}`, `Scratch: Cat's game`, or `Next player: ${nextValue}`)
-  // 💰 I've written the calculations for you! So you can use my utilities
-  // below to create these variables
 
   // This is the function your square click handler will call. `square` should
   // be an index. So if they click the center square, this will be `4`.
@@ -29,37 +23,59 @@ function Board() {
     // 🐨 first, if there's already winner or there's already a value at the
     // given square index (like someone clicked a square that's already been
     // clicked), then return early so we don't make any state changes
-    if (calculateWinner(squares) || squares[square]) {
+    if (calculateWinner(squares[moveCount]) || squares[moveCount][square]) {
       return;
     }
-    // 🦉 It's typically a bad idea to mutate or directly change state in React.
-    // Doing so can lead to subtle bugs that can easily slip into production.
-    //
     // 🐨 make a copy of the squares array
-    // 💰 `[...squares]` will do it!)
     const squaresCopy = [...squares];
-    // 🐨 set the value of the square that was selected
-    // 💰 `squaresCopy[square] = nextValue`
-    squaresCopy[square] = calculateNextValue(squares);
-    // 🐨 set the squares to your copy
-    setStatusMessage(calculateStatus(
-      calculateWinner(squaresCopy),
-      squaresCopy,
-      calculateNextValue(squaresCopy)));
+    // // 🐨 set the value of the square that was selected
+    squaresCopy[moveCount][square] = calculateNextValue(squares[moveCount]);
+    // // 🐨 set the squares to your copy
+    setStatusMessage(
+      calculateStatus(
+        calculateWinner(squaresCopy[moveCount]),
+        squaresCopy[moveCount],
+        calculateNextValue(squaresCopy[moveCount])
+      )
+    );
+    // to preserve state for each move, make a copy of the last move
+    squaresCopy.push([...squaresCopy[moveCount]]);
     setSquares(squaresCopy);
-
+    const newMoveCount = moveCount + 1;
+    setMoveCount(newMoveCount);
   }
 
   function restart() {
     // 🐨 reset the squares
     // 💰 `Array(9).fill(null)` will do it!
-    setSquares(Array(9).fill(null));
+    const newSquares = [Array(9).fill(null)];
+    const newMoveCount = 0;
+    setStatusMessage(calculateStatus(
+      calculateWinner(newSquares[newMoveCount]),
+      newSquares[newMoveCount],
+      calculateNextValue(newSquares[newMoveCount])
+    ));
+    setSquares(newSquares);
+    setMoveCount(newMoveCount);
+  }
+
+  function goToMove(moveIndex) {
+    const squaresCopy = [...squares];
+    setStatusMessage(
+      calculateStatus(
+        calculateWinner(squaresCopy[moveIndex]),
+        squaresCopy[moveIndex],
+        calculateNextValue(squaresCopy[moveIndex])
+      )
+    );
+    setSquares(squaresCopy.slice(0, moveIndex + 1));
+    setMoveCount(moveIndex);
   }
 
   function renderSquare(i) {
     return (
       <button className="square" onClick={() => selectSquare(i)}>
-        {squares[i]}
+        {squares[moveCount][i]}
       </button>
     )
   }
@@ -67,7 +83,15 @@ function Board() {
   return (
     <div>
       {/* 🐨 put the status in the div below */}
-      <div className="status">{statusMessage}</div>
+      <div className="status">
+        <div>{statusMessage}</div>
+        {Array(moveCount).fill(null).map((v, i) => (
+          <button key={`move${i}`} onClick={() => goToMove(i)}>
+            {0 === i ? `Go to game start` : `Go to move ${i}`}
+            {i === moveCount ? ` (current)` : ''}
+          </button>
+        ))}
+      </div>
       <div className="board-row">
         {renderSquare(0)}
         {renderSquare(1)}
